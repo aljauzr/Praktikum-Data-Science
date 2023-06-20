@@ -1,0 +1,121 @@
+---
+title: "RESPONSI_DS-(F)"
+author: "Al Jauzi Abdurrohman_123200106"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Intro
+
+1. Kerjakan soal-soal yang ada! Jangan lupa AUTHOR diberi NAMA dan NIM (pada bagian atas soal ini)
+2. Perhatikan instruksi soal dan jawab dengan mengisi chunk dibawah soal!
+3. Waktu pengerjaan mulai pukul 09.30 hingga 11.30 dan batas submit di Spada sampai 11.35 (2 Jam + 5 menit)
+4. Tidak ada toleransi kerja sama saat responsi. 
+5. Telat pengumpulan tiap 3 menit akan ada pengurangan nilai 10 point dengan maksimal pengurangan 50 point. Telat lebih dari 15 menit atau melebihi pukul 11.50 dianggap **GUGUR**.
+6. Soal yang rancu bisa ditanyakan ke asisten. 
+7. Pengumpulan hanya dalam bentuk **WORD Document atau PDF**. Jika pengumpulan dalam bentuk **Rmd** akan dianggap tidak mengumpulkan jawaban.
+8. Pastikan jawaban dapat dijalankan dengan baik sebelum submit. Jika masih ada error, cukup dicomment codenya tanpa perlu dijalankan/RUN/keluar outputnya.
+9. Jawaban dikumpulkan dengan format file NIM_Nama_Responsi dalam bentuk PDF atau WORD Document. 
+
+##Soal
+
+1. Load library apa saja yang kira-kira digunakan! Lalu load dataset 'googleplay.csv' dan 'googleplay_user_review.csv'!
+```{r }
+library(tidyverse)
+library(ggplot2)
+library(vroom)
+
+googleplay = vroom("D:/UPNVY/SEMESTER 5/5.2 Praktikum Data Science (F)/Responsi/googleplaystore.csv")
+googleplay_user_review = vroom("D:/UPNVY/SEMESTER 5/5.2 Praktikum Data Science (F)/Responsi/googleplaystore_user_reviews.csv")
+```
+
+**Pada soal nomor 2 s/d 7 hanya menggunakan dataset 'googleplay.csv'**
+
+2. Tampilkan 10 Aplikasi teratas berdasarkan kategori 'DATING' dan banyaknya RATING dari yang terkecil! 
+```{r }
+googleplay %>% filter(Category == "DATING") %>% arrange(Rating) %>% slice(1:10)
+```
+
+3. Tampilkan rata-rata dan standar deviasi dari RATING aplikasi dengan kategori "DATING"!
+```{r}
+googleplay %>% filter(Category == "DATING") %>% summarise(rata_rata = mean(Rating),
+                                                          standar_deviasi = sd(Rating))
+```
+
+4. Tambahkan variabel baru "rate" yang isinya merupakan hasil bagi RATING dengan REVIEWS! Kelompokkan berdasarkan KATEGORI, lalu tampilkan kesimpulan data berupa rata-rata dan standar deviasi-nya!
+```{r}
+# PENAMBAHAN KOLOM BARU
+rate = googleplay$Rating/googleplay$Reviews
+googleplay = mutate(googleplay, rate)
+
+# TAMPILKAN RATA-RATA DAN STANDAR DEVIASI
+googleplay %>% group_by(Category) %>% summarise(rata_rata = mean(rate), standar_deviasi = sd(rate))
+```
+
+5. Tampilkan 10 data teratas berdasarkan banyaknya unduhan, dan rating dari yang terbesar ke terkecil! (Data preprocessing)
+Clue : Kolom (Variabel) banyaknya unduhan memiliki tipe data yang tidak sesuai
+```{r }
+# DATA PREPROCESSING
+clean1 = gsub( "\\+", "", googleplay$Installs)
+clean2 = gsub( ",", "", clean1)
+googleplay = mutate(googleplay, Installs = clean2)
+googleplay$Installs = as.numeric(googleplay$Installs)
+
+# TAMPILKAN DATA
+googleplay %>% arrange(desc(Installs), desc(Rating)) %>% slice(1:10)
+```
+
+6. Tampilkan rata-rata Installs untuk setiap kategori aplikasi!
+```{r }
+rerata_installs = googleplay %>% group_by(Category) %>% summarise(rata_rata_installs = mean(Installs))
+
+# TAMPILKAN DATA
+rerata_installs
+```
+
+7. Berdasarkan soal nomor 6, buat plot untuk memvisualisasikan hasilnya! (Bentuk plot bebas)
+```{r }
+ggplot(rerata_installs, aes(x = Category, y = rata_rata_installs)) + geom_point() + labs(
+  x = "Kategori",
+  y = "Rata-rata Installs",
+  title = "Jumlah Rata-Rata Install Aplikasi per Kategori"
+)
+```
+
+Untuk nomor 8-10 gunakan library 'textdata' dan 'tidytext'. Jika eror pastikan kedua library tersebut sudah terinstall.
+```{r}
+library(textdata)
+library(tidytext)
+```
+
+8. Gabungkan data googleplaystore.csv dan googleplaystore_user_reviews.csv menggunakan inner join. Tampilkan 6 data teratas!
+```{r}
+data_gabungan = inner_join(googleplay, googleplay_user_review, by = "App")
+head(data_gabungan)
+```
+
+9. Dari data pada nomor 8, tampilkan nama aplikasi, translated_review, sentiment, dan reviews berdasarkan sentiment positif dan sentiment polarity terbesar ke terkecil! Tampilkan 10 data teratasnya!
+```{r}
+data_gabungan %>% filter(Sentiment == "Positive") %>%
+  arrange(desc(Sentiment_Polarity)) %>%
+  select(App, Translated_Review, Sentiment, Reviews) %>%
+  slice(1:10)
+```
+
+10. Dalam tahap pre-processing data, ketika ingin melakukan analisis sentimen beberapa hal harus dilakukan sebelum data dapat digunakan. Bersihkan dan rapikan data dengan membuang data yang "nan" di bagian Translated_Review. Setelah itu, data juga harus dibersihkan dari kata-kata yang mengandung stop_words. Tampilkan 6 data teratas dari data yang memiliki sentiment 'Positive' dengan rating kurang dari samadengan 4.5
+```{r}
+tidy_user_reviews <- data_gabungan %>%
+  filter(Translated_Review != "nan") %>%
+  unnest_tokens(word, Translated_Review) # %>%
+  # anti_join(googleplay, googleplay_user_reviews, by = "App")
+
+tidy_user_reviews %>% filter(Sentiment == "Positive" & Rating <= 4.5) %>% head()
+```
+
+*=== Selamat Mengerjakan ===*

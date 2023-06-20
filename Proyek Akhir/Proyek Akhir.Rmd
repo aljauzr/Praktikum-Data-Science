@@ -1,0 +1,239 @@
+---
+title: "Projek Akhir"
+author: '123200106/Al Jauzi Abdurrohman'
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# LIBRARY YANG DIGUNAKAN
+```{r}
+library(shiny)
+library(here)
+library(vroom)
+library(tm)
+library(RTextTools)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(syuzhet)
+library(e1071)
+library(caret)
+library(wordcloud)
+```
+
+# DATA CLEANING
+```{r}
+data <- vroom::vroom(here::here("Projek Akhir", "train.csv"))
+reviewdota2 = data %>% filter(data$title == "Dota 2" & data$year >= 2011 & data$year <= 2018) # mengambil data review dota 2 dari tahun 2011-2018
+
+rstats <- reviewdota2$user_review
+travel_corpus <- Corpus(VectorSource(rstats))
+
+data_clean <- tm_map(travel_corpus, removePunctuation) # menghilangkan tandabaca
+data_clean <- tm_map(data_clean, content_transformer(tolower)) # mengubah semua huruf menjadi huruf kecil
+data_clean <- tm_map(data_clean, removeNumbers) # menghilangkan angka
+removeURL <- function(removeURL) gsub("http.*", "", removeURL)
+data_clean <- tm_map(data_clean, removeURL) # menghilangkan link/url
+removeNL <- function(y) gsub("\n", " ", y) 
+data_clean <- tm_map(data_clean, removeNL) # menghilangkan endline
+data_clean <- tm_map(data_clean, removeWords, c("game","dota", "get", "play", "many", "also", "much", "people", "make", "still", "cant", "every", "youre", "ive", "one", "games", "lol", "ing", "thing", "lot", "playing", "players", "played", "player", "valve", "time", "way", "time", "dont", "since", "really", "want", "know", "look", "thats", "give", "take", "getting", "im", "op", "heroes", "never", "try", "makes", "map")) # menghilangkan beberapa kata
+removeEmoticon <- function(removeEmoticon) gsub("[^\x01-\x7F]", "", removeEmoticon)
+data_clean <- tm_map(data_clean, removeEmoticon) # menghilangkan emoticon
+
+stopwords <- scan(paste(getwd(), "/stopwords.txt", sep=""), character(), sep="\n")
+data_clean <- tm_map(data_clean,removeWords,stopwords) # menghilangkan stopwords
+
+data_clean_df<-data.frame(text=unlist(sapply(data_clean, `[`)), stringsAsFactors=F) # membuat data yang telah dibersihkan menjadi dataframe
+
+# menambah kolom user suggestion dan klasifikasi
+data_clean_df = mutate(data_clean_df, user_suggestion = reviewdota2$user_suggestion)
+klasifikasi = ifelse(data_clean_df$user_suggestion == 1, "Positif", "Negatif")
+data_clean_df = mutate(data_clean_df, klasifikasi)
+
+# mengupload dataframe ke local folder
+write.csv(data_clean_df,file = 'reviewclean.csv')
+```
+
+# Analisis Sentimen
+```{r}
+reviewclean <- read.csv("reviewclean.csv", stringsAsFactors = FALSE)
+komentar <- as.character(reviewclean$text) #mengubah objek numerik menjadi objek karakter
+s <- get_nrc_sentiment(komentar)
+
+komentar_gabungan <- cbind(reviewclean$text,s)
+par(mar = c(4,4,4,4))
+a <- barplot(colSums(s), col=rainbow(10), main='Analisis Sentimen')
+brplt <- a
+```
+
+# Wordcloud
+```{r}
+df <- read.csv("reviewclean.csv", stringsAsFactors = FALSE)
+glimpse(df)
+
+set.seed(20)
+df <- df[sample(nrow(df)),]
+df <- df[sample(nrow(df)),]
+glimpse(df)
+
+corpus <- Corpus(VectorSource(df$text))
+corpus
+inspect(corpus[1:10])
+
+corpus.clean <- corpus %>%
+  tm_map(content_transformer(tolower))%>%
+  tm_map(removePunctuation)%>%
+  tm_map(removeNumbers)%>%
+  tm_map(removeWords,stopwords(kind="en"))%>%
+  tm_map(stripWhitespace)
+dtm <- DocumentTermMatrix(corpus.clean)
+
+inspect(dtm[1:10, 1:20])
+
+df.train <- df[1:203,]
+df.test <- df[204:405,]
+
+dtm.train <- dtm[1:200,]
+dtm.test <- dtm[201:400,]
+
+corpus.clean.train <- corpus.clean[1:200]
+corpus.clean.test <- corpus.clean[201:400]
+
+dim(dtm.train)
+fivefreq <- findFreqTerms(dtm.train,5)
+length(fivefreq)
+
+dtm.train.nb <- DocumentTermMatrix(corpus.clean.train,control=list(dictionary=fivefreq))
+
+dtm.test.nb <- DocumentTermMatrix(corpus.clean.test,control=list(dictionary=fivefreq))
+
+dim(dtm.test.nb)
+
+convert_count <- function(x){
+  y <- ifelse(x>0,1,0)
+  y <- factor(y, levels=c(0,1), labels=c("no","yes"))
+  y
+}
+trainNB <- apply(dtm.train.nb,2,convert_count)
+testNB <- apply(dtm.test.nb,1,convert_count)
+
+layout(matrix(c(1, 2), nrow=2), heights=c(1, 4))
+par(mar=rep(0, 4))
+plot.new()
+text(x=0.5, y=0.5, cex=1.5, "Word Cloud")
+wordcloud(corpus.clean,max.words = 100,random.order=F,colors=brewer.pal(8,"Dark2"))
+```
+
+# GGplot
+```{r}
+reviewclean <- read.csv("reviewclean.csv", stringsAsFactors = FALSE)
+positifvsnegatif = ggplot(reviewclean, aes(klasifikasi, main = "Positif vs Negatif")) + geom_bar(fill = "#0073C2FF")
+positifvsnegatif
+```
+
+# Shiny
+```{r}
+ui <- fluidPage(
+  titlePanel("Analisis Sentimen terhadap Ulasan Game Dota 2 pada Platform Steam di Tahun 2011-2018"), #Judul
+  mainPanel( 
+    #tab pada fluidpage
+    #plot output : untuk barplot
+    tabsetPanel(type = "tabs",
+                tabPanel("Data Ulasan", DT::dataTableOutput('tbl')), #tab berupa data clening reviewclean
+                tabPanel("Bar Plot", plotOutput("barplot")), #tab berupa barplotarplot
+                tabPanel("Word Cloud", plotOutput("Wordcloud")), #tab berupa worldcloud
+                tabPanel("Positif vs Negatif", plotOutput("ggplot")) #tab berupa ggplot
+    )
+  )
+)
+
+# SERVER
+# Tempat memasukkan variabel output data yang nantinya akan ditampilkan di masing-masing tab Shiny
+server <- function(input, output) {
+  # Output Data
+  
+  #Tabel
+  output$tbl = DT::renderDataTable({ 
+    DT::datatable(reviewclean, options = list(lengthChange = FALSE)) # data akan ditampilkan dalam beberapa halaman.
+    })
+  
+  #Barplot
+  output$barplot <- renderPlot({reviewclean<-read.csv("reviewclean.csv",stringsAsFactors = FALSE)
+  komentar<-as.character(reviewclean$text)
+  s<-get_nrc_sentiment(komentar)
+  review_combine<-cbind(reviewclean$text,s)
+  par(mar=c(4,4,4,4))
+  barplot(colSums(s),col=rainbow(10),ylab='Jumlah Kata',xlab = "Jenis Sentiment", main='Sentiment Analysis')
+  }, height=400)
+  
+  #WordCloud
+  output$Wordcloud <- renderPlot({
+  glimpse(df)
+  set.seed(20)
+  df <- df[sample(nrow(df)),]
+  df <- df[sample(nrow(df)),]
+  glimpse(df)
+
+  corpus <- Corpus(VectorSource(df$text))
+  corpus
+  inspect(corpus[1:10])
+
+  corpus.clean <- corpus %>%
+    tm_map(content_transformer(tolower))%>%
+    tm_map(removePunctuation)%>%
+    tm_map(removeNumbers)%>%
+    tm_map(removeWords,stopwords(kind="en"))%>%
+    tm_map(stripWhitespace)
+  dtm <- DocumentTermMatrix(corpus.clean)
+
+  inspect(dtm[1:10, 1:20])
+
+  df.train <- df[1:50,]
+  df.test <- df[51:100,]
+
+  dtm.train <- dtm[1:50,]
+  dtm.test <- dtm[51:100,]
+
+  corpus.clean.train <- corpus.clean[1:50]
+  corpus.clean.test <- corpus.clean[51:100]
+
+  dim(dtm.train)
+  fivefreq <- findFreqTerms(dtm.train,5)
+  length(fivefreq)
+
+  dtm.train.nb <- DocumentTermMatrix(corpus.clean.train,control=list(dictionary=fivefreq))
+
+  dtm.test.nb <- DocumentTermMatrix(corpus.clean.test,control=list(dictionary=fivefreq))
+
+  dim(dtm.test.nb)
+
+  convert_count <- function(x){
+    y <- ifelse(x>0,1,0)
+    y <- factor(y, levels=c(0,1), labels=c("no","yes"))
+    y
+  }
+  trainNB <- apply(dtm.train.nb,2,convert_count)
+  testNB <- apply(dtm.test.nb,1,convert_count)
+
+  layout(matrix(c(1, 2), nrow=2), heights=c(1, 4))
+  par(mar=rep(0, 4))
+  plot.new()
+  text(x=0.5, y=0.5, cex=1.5, "Word Cloud")
+wordcloud(corpus.clean,max.words = 100,random.order=F,colors=brewer.pal(8,"Dark2"))
+
+  })
+  
+  #GGPlot
+  output$ggplot <- renderPlot({reviewclean<-read.csv("reviewclean.csv",stringsAsFactors = FALSE)
+  positifvsnegatif = ggplot(reviewclean, aes(klasifikasi, main = "Positif vs Negatif")) + geom_bar(fill = "#0073C2FF")
+positifvsnegatif
+  })
+  
+}
+shinyApp(ui = ui, server = server)
+```
+

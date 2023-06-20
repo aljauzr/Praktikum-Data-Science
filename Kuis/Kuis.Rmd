@@ -1,0 +1,105 @@
+---
+title: "Kuis_DS_IF-F"
+author: "123200106_Al Jauzi A_Kuis"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Intro
+##Baca Petunjuk Terlebih Dahulu!
+
+1. Kerjakan soal-soal yang ada! Jangan lupa tulis NAMA dan NIM pada author dan rename file RMarkdown ini!
+2. Jawablah dengan mengisi chunk dibawah soal!
+3. Durasi pengerjaan selama 2 jam + 5 menit submit.
+4. Tidak ada toleransi telat submit.
+5. Export hasil pekerjaan dalam format PDF/Word & format pengumpulan NIM_NAMA_KUIS.pdf 
+
+1. Load library apa saja yang diperlukan! Lalu gunakan data bernama 'movielens'! **point 2**
+```{r}
+  library(dslabs)
+  library(tidyverse)
+  data(movielens)
+```
+
+2. Buatlah objek baru dengan nama bebas (mis. 'movie_new') untuk menyimpan data film diatas tahun 2000 dan gunakan hanya variabel/kolom 'movieId', 'title', 'year', 'genres', dan 'rating'. Objek yang sudah dibuat akan dipakai untuk soal - soal selanjutnya. Tampilkan 10 data teratasnya! **point 13**
+```{r}
+movie_new = movielens %>%
+  select(movieId, title, year, genres, rating) %>%
+  filter(year >= 2000)
+head(movie_new, 10)
+```
+
+3. Tampilkan data dengan movieid '85367'.**point 7**
+```{r}
+movie_new %>% filter(movieId == "85367")
+```
+
+4. Tampilkan semua nama kolom/variabel pada data frame yang sudah kalian buat tersebut! Tampilkan juga panjang dari vektor variabel/kolom 'title'. **point 7**
+```{r}
+names(movie_new)
+length(movie_new$title)
+```
+
+5. Lakukan visualisasi data dengan plot histogram berdasarkan variabel rating! **point 6**
+```{r}
+rating = movie_new$rating
+hist(rating)
+```
+
+6. Tampilkan 10 data film dengan genre Thriller teratas diurutkan berdasarkan jumlah rating terbesar ke terkecil yang rilis antara tahun 2010 dan 2015! **point 15**
+```{r}
+movie_new %>%
+  filter (genres == "Thriller" & year >= 2010 & year <= 2015) %>%
+  arrange(desc(rating)) %>%
+  head(10)
+```
+
+7. Klasifikasikan data tersebut berdasarkan ratingnya dengan kondisi:
+- Rating kurang dari samadengan 2.5 dikategorikan sebagai "Buruk"
+- Rating samadengan 5.0 dikategorikan sebagai "Sempurna"
+- Rating antara kedua kondisi diatas dikategorikan sebagai "Biasa"
+
+Masukkan ke suatu objek baru bernama 'category', lalu tampilkan 6 data teratas dari objek 'category'. **point 15**.
+
+```{r}
+category = ifelse (movie_new$rating <= 2.5, "Buruk",
+            ifelse (movie_new$rating == 5.0, "Sempurna",
+              ifelse (movie_new$rating > 2.5 & movie_new$rating < 5.0, "Biasa", NA)
+              )
+            )
+
+head(category)
+```
+
+8. Tambahkan variabel baru pada data frame yang kalian buat di soal nomor 2 dengan tambahan kolom baru "category" yang isinya merupakan data dari objek yang dibuat pada soal nomor 7. Tampilkan 5 data teratas berdasarkan genre "Comedy" dan kategori "Sempurna" lalu urutkan dari film terbaru ke terlama! **point 13**
+```{r}
+movie_new = mutate(movie_new, category)
+movie_new %>%
+  filter (genres == "Comedy" & category == "Sempurna") %>%
+  arrange(desc(year)) %>%
+head(5)
+```
+
+9.  Ambil data pada dataframe yang kalian buat berdasarkan genres: Action, Drama, Thriller, Comedy, & Animation, kelompokkan berdasarkan genres, lalu tampilkan kesimpulan data berupa rata-rata dan standar deviasi-nya. **point 15**
+```{r}
+data_no9 =
+movie_new %>%
+group_by(genres) %>%
+  filter(genres=="Action" | genres=="Drama" | genres=="Thriller" | genres=="Comedy" | genres=="Animation") %>%
+  summarise(rata_rata=mean(rating), standar_deviasi=sd(rating))
+
+data_no9
+```
+
+10. Lakukan visualisasi dengan plot antara standar deviasi dan nilai rata-ratanya dari hasil nomor 9! **point 7**
+```{r}
+x <- data_no9$rata_rata
+y <- data_no9$standar_deviasi
+plot(x, y)
+```

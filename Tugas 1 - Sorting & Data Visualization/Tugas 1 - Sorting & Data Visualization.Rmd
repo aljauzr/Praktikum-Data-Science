@@ -1,0 +1,95 @@
+---
+title: "Tugas 1 Prak DS IF-F"
+author: "Al Jauzi Abdurrohman/123200106"
+date: "13-09-2022"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Tugas 1 Pertemuan 2 Modul 4 "FUNGSI SORTING DAN DASAR VISUALISASI DATA"
+
+*) Pada latihan ini seluruh soal akan akan menggunakan dataset: AS murders.
+
+Untuk membuat data frame baru, contoh script yang dapat digunakan adalah sebagai berikut:
+
+```{r}
+temp <- c(35, 88, 42, 84, 81, 30)
+city <- c("Beijing", "Lagos", "Paris", "Rio de Janeiro",
+"San Juan", "Toronto")
+city_temps <- data.frame(name = city, temperature = temp)
+```
+
+Lakukan import library dan gunakan data "murders"
+
+```{r library}
+# Import library
+library(dslabs)
+# Pakai data murders
+data(murders)
+```
+
+1. Gunakan fungsi rank untuk menentukan peringkat populasi dari tiap negara bagian. Simpan hasil pemeringkatan di objek baru “ranks”, lalu buat data frame baru yang berisi nama negara bagian dan peringkat yang sudah dibuat dengan nama “my_df”. Tampilkan 6 data teratasnya!
+
+```{r Jawab No. 1}
+ranks = rank(murders$population)
+negara = murders$state
+my_df = data.frame(negara, ranks)
+
+# MENAMPILKAN 6 BARIS TERATAS DARI 2 KOLOM DATA FRAME YANG TELAH DIBUAT
+sapply(list(negara = my_df$negara, ranks = my_df$ranks), head, n = 6)
+```
+
+2. Tampilkan data state dan rank yang sudah dibuat pada soal sebelumnya secara berurutan. Tampilkan 6 data teratasnya!
+
+Petunjuk: masukkan data baru tersebut ke objek baru bernama 'sorted_my_df'
+
+```{r Jawab No. 2}
+negara_sorted = c(my_df$negara[order(my_df$ranks)])
+ranks_sorted = sort(my_df$ranks)
+sorted_my_df = data.frame(negara = negara_sorted, ranks = ranks_sorted)
+
+# MENAMPILKAN 6 BARIS TERATAS DARI 2 KOLOM DATA FRAME YANG TELAH DIBUAT
+sapply(list(negara = sorted_my_df$negara, ranks = sorted_my_df$ranks), head, n = 6)
+```
+
+3. Ulangi langkah sebelumnya, namun kali ini urutkan my_df dengan fungsi order kemudian data ditampilkan dengan data yang telah diurutkan dari populasi yang paling tidak padat hingga ke yang terpadat! Tampilkan 6 data teratasnya!
+
+Petunjuk: buat objek “ind” yang akan menyimpan indeks yang diperlukan dalam mengurutkan data populasi
+
+```{r Jawab No. 3}
+negara_sorted = c(my_df$negara[order(my_df$ranks)])
+ind = order(murders$population)
+populasi_sorted = murders$population[ind]
+sorted_my_df = data.frame(negara = negara_sorted, populasi = populasi_sorted)
+
+# MENAMPILKAN 6 BARIS TERATAS DARI 2 KOLOM DATA FRAME YANG TELAH DIBUAT
+sapply(list(negara = sorted_my_df$negara, populasi = sorted_my_df$populasi), head, n = 6)
+```
+
+4. Buat variabel baru dengan nama "rate" untuk data murders yang merupakan hasil dari total / population * 100000, kemudian tampilkan nama state sesuai urutan dari rate terkecil hingga terbesar!
+
+```{r Jawab No. 4}
+rate = murders$total/murders$population * 100000
+
+# MENAMPILKAN NAMA NEGARA SESUAI URUTAN RATE KECIL KE BESAR
+state_orderby_rate = c(my_df$negara[order(rate)])
+state_orderby_rate
+```
+
+5a. Buat histogram dari rate pada data murders dengan menggunakan fungsi 'with'!
+
+```{r Jawab No. 5a}
+data_rate = with(murders, rate)
+hist(data_rate)
+```
+
+5b. Buat boxplot dari total kasus pada data murders berdasarkan wilayahnya!
+
+```{r Jawab No. 5b}
+boxplot(rate~region, data = murders)
+```
